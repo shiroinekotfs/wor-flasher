@@ -1,7 +1,11 @@
 #!/bin/bash
 
-#Written by Botspot
-#This script is an automation for the tutorial that can be found here: https://worproject.com/guides/how-to-install/from-other-os
+# Written by Botspot
+# This script is an automation for the tutorial that can be found here: https://worproject.com/guides/how-to-install/from-other-os
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)/tmp"
+
+mkdir -p "$SCRIPT_DIR"
 
 error() { #Input: error message
   echo -e "\e[91m$1\e[0m" 1>&2
@@ -455,7 +459,7 @@ IFS=$'\n'
 
 { #check for updates and auto-update if the no-update files does not exist
 if [ -e "$DIRECTORY" ] && [ ! -f "${DIRECTORY}/no-update" ];then
-  prepwd="$PWD"
+  prepwd="$SCRIPT_DIR"
   cd "$DIRECTORY"
   localhash="$(git rev-parse HEAD)"
   latesthash="$(git ls-remote https://github.com/Botspot/wor-flasher HEAD | awk '{print $1}')"
@@ -534,7 +538,7 @@ Enter \e[96m1\e[0m, \e[96m2\e[0m or \e[96m3\e[0m: "
           #Discover past extracted ISO files so user does not need to keep ISO
           num_opts=3 #default number of options already in the "Additional options" menu
           add_options='' #Store additional options to display to the user
-          available_extracted_isos="$(find "$PWD" -maxdepth 2 -type f -name 'alldone' | grep -o "/winfiles_from_iso.*/" | sed 's+/$++' | sed 's+/winfiles_from_iso_++g' | sort)"
+          available_extracted_isos="$(find "$SCRIPT_DIR" -maxdepth 2 -type f -name 'alldone' | grep -o "/winfiles_from_iso.*/" | sed 's+/$++' | sed 's+/winfiles_from_iso_++g' | sort)"
           
           for folder in $available_extracted_isos ;do
             BID="$(echo "$folder" | awk -F_ '{print $1}')"
@@ -805,7 +809,7 @@ CONFIG_TXT: ⤴"
 [ ! -z "$DRY_RUN" ] && echo "DRY_RUN: $DRY_RUN"
 echo
 
-if [ ! -d "$PWD/peinstaller" ];then
+if [ ! -d "$SCRIPT_DIR/peinstaller" ];then
   status "Downloading WoR PE-based installer from Google Drive"
   
   PE_INSTALLER_SHA256=$(wget -qO- http://worproject.com/dldserv/worpe/gethashlatest.php | cut -d ':' -f2)
@@ -815,51 +819,51 @@ if [ ! -d "$PWD/peinstaller" ];then
   #URL='http://worproject.com/dldserv/worpe/downloadlatest.php'
   #determine Google Drive FILEUUID from given redirect URL
   #FILEUUID="$(wget --spider --content-disposition --trust-server-names -O /dev/null "$URL" 2>&1 | grep Location | sed 's/^Location: //g' | sed 's/ \[following\]$//g' | grep 'drive\.google\.com' | sed 's+.*/++g' | sed 's/.*&id=//g')"
-  #download_from_gdrive "$FILEUUID" "$PWD/WoR-PE_Package.zip" || error "Failed to download Windows on Raspberry PE-based installer"
-  wget http://worproject.com/dldserv/worpe/downloadlatest.php -O "$PWD/WoR-PE_Package.zip"
+  #download_from_gdrive "$FILEUUID" "$SCRIPT_DIR/WoR-PE_Package.zip" || error "Failed to download Windows on Raspberry PE-based installer"
+  wget http://worproject.com/dldserv/worpe/downloadlatest.php -O "$SCRIPT_DIR/WoR-PE_Package.zip"
   
-  if [ "$PE_INSTALLER_SHA256" != "$(sha256sum "$PWD/WoR-PE_Package.zip" | awk '{print $1}' | tr '[a-z]' '[A-Z]')" ];then
+  if [ "$PE_INSTALLER_SHA256" != "$(sha256sum "$SCRIPT_DIR/WoR-PE_Package.zip" | awk '{print $1}' | tr '[a-z]' '[A-Z]')" ];then
     error "Downloaded PE-based installer does not match expected file"
   fi
   
-  rm -rf "$PWD/peinstaller"
-  unzip -q "$PWD/WoR-PE_Package.zip" -d "$PWD/peinstaller"
+  rm -rf "$SCRIPT_DIR/peinstaller"
+  unzip -q "$SCRIPT_DIR/WoR-PE_Package.zip" -d "$SCRIPT_DIR/peinstaller"
   if [ $? != 0 ];then
-    rm -rf "$PWD/peinstaller"
-    error "The unzip command failed to extract $PWD/WoR-PE_Package.zip"
+    rm -rf "$SCRIPT_DIR/peinstaller"
+    error "The unzip command failed to extract $SCRIPT_DIR/WoR-PE_Package.zip"
   fi
-  rm -f "$PWD/WoR-PE_Package.zip"
+  rm -f "$SCRIPT_DIR/WoR-PE_Package.zip"
   echo
 else
-  echo "Not downloading $PWD/peinstaller - folder exists"
+  echo "Not downloading $SCRIPT_DIR/peinstaller - folder exists"
 fi
 
 if [ "$RPI_MODEL" != 5 ];then
-  if [ ! -d "$PWD/driverpackage" ];then
+  if [ ! -d "$SCRIPT_DIR/driverpackage" ];then
     status "Downloading ARM64 drivers"
     #from: https://github.com/worproject/RPi-Windows-Drivers/releases
     #example download URL (will be outdated) https://github.com/worproject/RPi-Windows-Drivers/releases/download/v0.11/RPi4_Windows_ARM64_Drivers_v0.11.zip
     #determine latest release download URL:
     URL="$(wget -qO- https://api.github.com/repos/worproject/RPi-Windows-Drivers/releases/latest | grep '"browser_download_url":'".*RPi${RPI_MODEL}_Windows_ARM64_Drivers_.*\.zip" | sed 's/^.*browser_download_url": "//g' | sed 's/"$//g')"
-    wget -O "$PWD/RPi${RPI_MODEL}_Windows_ARM64_Drivers.zip" "$URL" || error "Failed to download driver package"
+    wget -O "$SCRIPT_DIR/RPi${RPI_MODEL}_Windows_ARM64_Drivers.zip" "$URL" || error "Failed to download driver package"
     
-    rm -rf "$PWD/driverpackage"
-    unzip -q "$PWD/RPi${RPI_MODEL}_Windows_ARM64_Drivers.zip" -d "$PWD/driverpackage"
+    rm -rf "$SCRIPT_DIR/driverpackage"
+    unzip -q "$SCRIPT_DIR/RPi${RPI_MODEL}_Windows_ARM64_Drivers.zip" -d "$SCRIPT_DIR/driverpackage"
     if [ $? != 0 ];then
-      rm -rf "$PWD/driverpackage"
-      error "The unzip command failed to extract $PWD/RPi${RPI_MODEL}_Windows_ARM64_Drivers.zip"
+      rm -rf "$SCRIPT_DIR/driverpackage"
+      error "The unzip command failed to extract $SCRIPT_DIR/RPi${RPI_MODEL}_Windows_ARM64_Drivers.zip"
     fi
     
-    rm -f "$PWD/RPi${RPI_MODEL}_Windows_ARM64_Drivers.zip"
+    rm -f "$SCRIPT_DIR/RPi${RPI_MODEL}_Windows_ARM64_Drivers.zip"
     echo
   else
-    echo "Not downloading $PWD/driverpackage - folder exists"
+    echo "Not downloading $SCRIPT_DIR/driverpackage - folder exists"
   fi
 fi
 
-if [ ! -d "$PWD/pi${RPI_MODEL}-uefipackage" ];then
+if [ ! -d "$SCRIPT_DIR/pi${RPI_MODEL}-uefipackage" ];then
   status "Downloading Pi${RPI_MODEL} UEFI firmware"
-  rm -rf "$PWD/pi${RPI_MODEL}-uefipackage" "$PWD/uefipackage" "$PWD/RPi${RPI_MODEL}_UEFI_Firmware.zip"
+  rm -rf "$SCRIPT_DIR/pi${RPI_MODEL}-uefipackage" "$SCRIPT_DIR/uefipackage" "$SCRIPT_DIR/RPi${RPI_MODEL}_UEFI_Firmware.zip"
   #from: https://github.com/pftf/RPi4/releases
   #example download URL (will be outdated) https://github.com/pftf/RPi4/releases/download/v1.29/RPi4_UEFI_Firmware_v1.29.zip
   
@@ -878,19 +882,19 @@ if [ ! -d "$PWD/pi${RPI_MODEL}-uefipackage" ];then
       URL='https://github.com/pftf/RPi3/releases/download/v1.39/RPi3_UEFI_Firmware_v1.39.zip'
   esac
   
-  wget -O "$PWD/RPi${RPI_MODEL}_UEFI_Firmware.zip" "$URL" || error "Failed to download UEFI package"
+  wget -O "$SCRIPT_DIR/RPi${RPI_MODEL}_UEFI_Firmware.zip" "$URL" || error "Failed to download UEFI package"
   
-  rm -rf "$PWD/pi${RPI_MODEL}-uefipackage"
-  unzip -q "$PWD/RPi${RPI_MODEL}_UEFI_Firmware.zip" -d "$PWD/pi${RPI_MODEL}-uefipackage"
+  rm -rf "$SCRIPT_DIR/pi${RPI_MODEL}-uefipackage"
+  unzip -q "$SCRIPT_DIR/RPi${RPI_MODEL}_UEFI_Firmware.zip" -d "$SCRIPT_DIR/pi${RPI_MODEL}-uefipackage"
   if [ $? != 0 ];then
-    rm -rf "$PWD/pi${RPI_MODEL}-uefipackage"
-    error "The unzip command failed to extract $PWD/RPi${RPI_MODEL}_UEFI_Firmware.zip"
+    rm -rf "$SCRIPT_DIR/pi${RPI_MODEL}-uefipackage"
+    error "The unzip command failed to extract $SCRIPT_DIR/RPi${RPI_MODEL}_UEFI_Firmware.zip"
   fi
   
-  rm -f "$PWD/RPi${RPI_MODEL}_UEFI_Firmware.zip"
+  rm -f "$SCRIPT_DIR/RPi${RPI_MODEL}_UEFI_Firmware.zip"
   echo
 else
-  echo "Not downloading $PWD/pi${RPI_MODEL}-uefipackage - folder exists"
+  echo "Not downloading $SCRIPT_DIR/pi${RPI_MODEL}-uefipackage - folder exists"
 fi
 
 { #Download Windows ESD if an ISO was not provided and one has not already been extracted
@@ -901,13 +905,13 @@ if [ ! -z "$SOURCE_FILE" ];then
   #set folder name to store files from the ISO
   #files are stored in a folder specific to the OS version and language
   winfiles="winfiles_from_iso_${BID}_${WIN_LANG}"
-  mkdir -p "$PWD/$winfiles"
+  mkdir -p "$SCRIPT_DIR/$winfiles"
   
-elif [ -f "$PWD/winfiles_from_iso_${BID}_${WIN_LANG}/alldone" ];then
+elif [ -f "$SCRIPT_DIR/winfiles_from_iso_${BID}_${WIN_LANG}/alldone" ];then
   echo "Not downloading ESD image - using a previously extracted ISO instead"
   winfiles="winfiles_from_iso_${BID}_${WIN_LANG}"
   
-elif [ -f "$PWD/winfiles_${BID}_${WIN_LANG}/alldone" ];then
+elif [ -f "$SCRIPT_DIR/winfiles_${BID}_${WIN_LANG}/alldone" ];then
   echo "Not downloading ESD image - already extracted"
   winfiles="winfiles_${BID}_${WIN_LANG}"
   
@@ -936,61 +940,61 @@ else #Download and extract ESD
   #set folder name to store files from the ESD
   #files are stored in a folder specific to the OS version and language
   winfiles="winfiles_${BID}_${WIN_LANG}"
-  mkdir -p "$PWD/$winfiles"
+  mkdir -p "$SCRIPT_DIR/$winfiles"
   
-  if [ -f "$PWD/$winfiles/image.esd" ] && [ "$SHA1" == "$(sha1sum "$PWD/$winfiles/image.esd" | awk '{print $1}')" ];then
-    echo "Not downloading $PWD/$winfiles/image.esd - file exists"
+  if [ -f "$SCRIPT_DIR/$winfiles/image.esd" ] && [ "$SHA1" == "$(sha1sum "$SCRIPT_DIR/$winfiles/image.esd" | awk '{print $1}')" ];then
+    echo "Not downloading $SCRIPT_DIR/$winfiles/image.esd - file exists"
   else
     status "Downloading Windows ESD image"
-    wget "$URL" -O "$PWD/$winfiles/image.esd" || error "Failed to download ESD image"
+    wget "$URL" -O "$SCRIPT_DIR/$winfiles/image.esd" || error "Failed to download ESD image"
     status -n "Verifying download... "
-    LOCAL_SHA1="$(sha1sum "$PWD/$winfiles/image.esd" | awk '{print $1}')"
+    LOCAL_SHA1="$(sha1sum "$SCRIPT_DIR/$winfiles/image.esd" | awk '{print $1}')"
     if [ "$SHA1" != "$LOCAL_SHA1" ];then
       error "\nSuccessfully downloaded ESD image, but it appears to be corrupted. Please run this script again.\n(Expected SHA1 hash is $SHA1, but downloaded file has SHA1 hash $LOCAL_SHA1"
     fi
     echo_green "Done"
   fi
-  SOURCE_FILE="$PWD/$winfiles/image.esd"
+  SOURCE_FILE="$SCRIPT_DIR/$winfiles/image.esd"
 fi
 }
 
 #Extract ESD or ISO to standardized locations in $DL_DIR
 if [[ "$SOURCE_FILE" == *'.ESD' ]] || [[ "$SOURCE_FILE" == *'.esd' ]];then
-  cd "$PWD/$winfiles" || error "Failed to access $PWD/$winfiles folder"
+  cd "$SCRIPT_DIR/$winfiles" || error "Failed to access $SCRIPT_DIR/$winfiles folder"
   
-  status "Extracting $(basename "$SOURCE_FILE") to $PWD"
+  status "Extracting $(basename "$SOURCE_FILE") to $SCRIPT_DIR"
   #Extract first volume containing boot files
-  errors="$(wimextract "$SOURCE_FILE" 1 boot efi --dest-dir="$PWD/bootpart" 2>&1)" || error "Failed to extract first partition of $SOURCE_FILE\nErrors:\n$errors"
+  errors="$(wimextract "$SOURCE_FILE" 1 boot efi --dest-dir="$SCRIPT_DIR/bootpart" 2>&1)" || error "Failed to extract first partition of $SOURCE_FILE\nErrors:\n$errors"
   
   #Create boot.wim file
-  mkdir "$PWD/bootpart/sources"
+  mkdir "$SCRIPT_DIR/bootpart/sources"
   #Export WinPE & Setup editions to non-solid boot.wim
-  errors="$(wimexport "$SOURCE_FILE" 2 "$PWD/bootpart/sources/boot.wim" --compress=LZX 2>&1)" || error "Failed to export WinPE edition to $PWD/bootpart/sources/boot.wim\nErrors:\n$errors"
-  errors="$(wimexport "$SOURCE_FILE" 3 "$PWD/bootpart/sources/boot.wim" --compress=LZX --boot 2>&1)" || error "Failed to export Setup edition to $PWD/bootpart/sources/boot.wim\nErrors:\n$errors"
+  errors="$(wimexport "$SOURCE_FILE" 2 "$SCRIPT_DIR/bootpart/sources/boot.wim" --compress=LZX 2>&1)" || error "Failed to export WinPE edition to $SCRIPT_DIR/bootpart/sources/boot.wim\nErrors:\n$errors"
+  errors="$(wimexport "$SOURCE_FILE" 3 "$SCRIPT_DIR/bootpart/sources/boot.wim" --compress=LZX --boot 2>&1)" || error "Failed to export Setup edition to $SCRIPT_DIR/bootpart/sources/boot.wim\nErrors:\n$errors"
   
   #If using an external ESD file, make a copy before modifying it
-  if [ "$SOURCE_FILE" != "$PWD/image.esd" ];then
-    cp "$SOURCE_FILE" "$PWD/image.esd" || error "Failed to copy the ESD to $PWD/image.esd"
-    SOURCE_FILE="$PWD/image.esd"
+  if [ "$SOURCE_FILE" != "$SCRIPT_DIR/image.esd" ];then
+    cp "$SOURCE_FILE" "$SCRIPT_DIR/image.esd" || error "Failed to copy the ESD to $SCRIPT_DIR/image.esd"
+    SOURCE_FILE="$SCRIPT_DIR/image.esd"
   fi
   #Remove first 3 partitions from ESD file
   errors="$(wimdelete "$SOURCE_FILE" 1 --soft 2>&1)" || error "Failed to remove a partition from $SOURCE_FILE\nErrors:\n$errors"
   errors="$(wimdelete "$SOURCE_FILE" 1 --soft 2>&1)" || error "Failed to remove a partition from $SOURCE_FILE\nErrors:\n$errors"
   errors="$(wimdelete "$SOURCE_FILE" 1 --soft 2>&1)" || error "Failed to remove a partition from $SOURCE_FILE\nErrors:\n$errors" #remove --soft for this last one to minimize filesize
-  mv -f "$SOURCE_FILE" "$PWD/install.wim" || error "Failed to rename $SOURCE_FILE to install.wim"
+  mv -f "$SOURCE_FILE" "$SCRIPT_DIR/install.wim" || error "Failed to rename $SOURCE_FILE to install.wim"
   
-  touch "$PWD/alldone" #mark this folder of microsoft stuff as complete
+  touch "$SCRIPT_DIR/alldone" #mark this folder of microsoft stuff as complete
   
   #Change working directory back to $DL_DIR
   cd ..
   
 elif [[ "$SOURCE_FILE" == *'.ISO' ]] || [[ "$SOURCE_FILE" == *'.iso' ]];then
-  cd "$PWD/$winfiles" || error "Failed to access $PWD/$winfiles folder"
+  cd "$SCRIPT_DIR/$winfiles" || error "Failed to access $SCRIPT_DIR/$winfiles folder"
   
   status "Mounting $(basename "$SOURCE_FILE")"
-  mkdir -p "$PWD/isomount" || error "Failed to make $PWD/isomount folder"
-  sudo umount "$PWD/isomount" 2>/dev/null
-  sudo mount "$SOURCE_FILE" "$PWD/isomount" 2>/dev/null
+  mkdir -p "$SCRIPT_DIR/isomount" || error "Failed to make $SCRIPT_DIR/isomount folder"
+  sudo umount "$SCRIPT_DIR/isomount" 2>/dev/null
+  sudo mount "$SOURCE_FILE" "$SCRIPT_DIR/isomount" 2>/dev/null
   if [ $? != 0 ];then
     status "Failed to mount the ISO file. Trying again after loading the 'udf' kernel module."
     sudo modprobe udf
@@ -1001,37 +1005,37 @@ elif [[ "$SOURCE_FILE" == *'.ISO' ]] || [[ "$SOURCE_FILE" == *'.iso' ]];then
       modprobe_failed=0
     fi
     
-    sudo mount "$SOURCE_FILE" "$PWD/isomount"
+    sudo mount "$SOURCE_FILE" "$SCRIPT_DIR/isomount"
     if [ $? != 0 ];then
       if [ "$modprobe_failed" == 1 ] && [ ! -d "/lib/modules/$(uname -r)" ];then
-        error "The 'udf' kernel module is required to mount the ISO file (uupdump/$(basename $(echo "$PWD/uupdump"/*.ISO))), but all kernel modules are missing! Most likely, you upgraded kernel packages and have not rebooted yet. Try rebooting."
+        error "The 'udf' kernel module is required to mount the ISO file (uupdump/$(basename $(echo "$SCRIPT_DIR/uupdump"/*.ISO))), but all kernel modules are missing! Most likely, you upgraded kernel packages and have not rebooted yet. Try rebooting."
       else
-        error "Failed to mount ISO file ($(echo "$PWD/uupdump"/*.ISO)) to $PWD/isomount"
+        error "Failed to mount ISO file ($(echo "$SCRIPT_DIR/uupdump"/*.ISO)) to $SCRIPT_DIR/isomount"
       fi
     fi
   fi
   #unmount on exit
-  trap "sudo umount -q '$PWD/isomount' 2>/dev/null" EXIT
+  trap "sudo umount -q '$SCRIPT_DIR/isomount' 2>/dev/null" EXIT
   
-  mkdir -p "$PWD"/bootpart
-  status "Copying files from ISO file to $PWD:"
+  mkdir -p "$SCRIPT_DIR"/bootpart
+  status "Copying files from ISO file to $SCRIPT_DIR:"
   echo "  - Boot files"
-  cp -r "$PWD/isomount/boot" "$PWD"/bootpart || error "Failed to copy $PWD/isomount/boot to $PWD/bootpart"
+  cp -r "$SCRIPT_DIR/isomount/boot" "$SCRIPT_DIR"/bootpart || error "Failed to copy $SCRIPT_DIR/isomount/boot to $SCRIPT_DIR/bootpart"
   echo "  - EFI files"
-  cp -r "$PWD/isomount/efi" "$PWD"/bootpart || error "Failed to copy $PWD/isomount/efi to $PWD/bootpart"
-  mkdir -p "$PWD"/bootpart/sources || error "Failed to make folder: $PWD/bootpart/sources"
+  cp -r "$SCRIPT_DIR/isomount/efi" "$SCRIPT_DIR"/bootpart || error "Failed to copy $SCRIPT_DIR/isomount/efi to $SCRIPT_DIR/bootpart"
+  mkdir -p "$SCRIPT_DIR"/bootpart/sources || error "Failed to make folder: $SCRIPT_DIR/bootpart/sources"
   echo "  - boot.wim"
-  cp "$PWD/isomount/sources/boot.wim" "$PWD"/bootpart/sources || error "Failed to copy $PWD/isomount/sources/boot.wim to $PWD/bootpart/sources"
+  cp "$SCRIPT_DIR/isomount/sources/boot.wim" "$SCRIPT_DIR"/bootpart/sources || error "Failed to copy $SCRIPT_DIR/isomount/sources/boot.wim to $SCRIPT_DIR/bootpart/sources"
   echo "  - install.wim"
-  cp "$PWD/isomount/sources/install.wim" "$PWD" || error "Failed to copy $PWD/isomount/sources/install.wim to $PWD/winpart"
+  cp "$SCRIPT_DIR/isomount/sources/install.wim" "$SCRIPT_DIR" || error "Failed to copy $SCRIPT_DIR/isomount/sources/install.wim to $SCRIPT_DIR/winpart"
   
-  touch "$PWD/alldone" #mark this folder of microsoft stuff as complete
+  touch "$SCRIPT_DIR/alldone" #mark this folder of microsoft stuff as complete
   
   echo "All necessary files have been copied out. Your ISO file will not be needed for future flashes."
   
   status "Unmounting ISO file"
-  sudo umount "$PWD/isomount" || echo_red "Warning: failed to unmount $PWD/isomount" #failure is non-fatal
-  rmdir "$PWD/isomount" #remove mountpoint
+  sudo umount "$SCRIPT_DIR/isomount" || echo_red "Warning: failed to unmount $SCRIPT_DIR/isomount" #failure is non-fatal
+  rmdir "$SCRIPT_DIR/isomount" #remove mountpoint
   
   #Change working directory back to $DL_DIR
   cd ..
@@ -1108,28 +1112,28 @@ trap "sudo umount -q '$mntpnt/winpart' 2>/dev/null" EXIT
 
 status "Copying files to $DEVICE:"
 echo "  - Startup environment"
-sudo cp -r "$PWD/$winfiles/bootpart"/* "$mntpnt"/bootpart || error "Failed to copy $PWD/$winfiles/bootpart to $mntpnt/bootpart"
+sudo cp -r "$SCRIPT_DIR/$winfiles/bootpart"/* "$mntpnt"/bootpart || error "Failed to copy $SCRIPT_DIR/$winfiles/bootpart to $mntpnt/bootpart"
 echo "  - Installation files"
-sudo cp "$PWD/$winfiles/install.wim" "$mntpnt"/winpart || error "Failed to copy $PWD/$winfiles/install.wim to $mntpnt/winpart"
+sudo cp "$SCRIPT_DIR/$winfiles/install.wim" "$mntpnt"/winpart || error "Failed to copy $SCRIPT_DIR/$winfiles/install.wim to $mntpnt/winpart"
 echo "  - EFI files"
-sudo cp -r "$PWD/peinstaller/efi" "$mntpnt"/bootpart || error "Failed to copy $PWD/peinstaller/efi to $mntpnt/bootpart"
+sudo cp -r "$SCRIPT_DIR/peinstaller/efi" "$mntpnt"/bootpart || error "Failed to copy $SCRIPT_DIR/peinstaller/efi to $mntpnt/bootpart"
 
 echo "  - PE installer"
-errors="$(sudo wimupdate "$mntpnt"/bootpart/sources/boot.wim 2 --command="add peinstaller/winpe/2 /" 2>&1)" || error "The wimupdate command failed to add $PWD/peinstaller to boot.wim\nErrors:\n$errors"
+errors="$(sudo wimupdate "$mntpnt"/bootpart/sources/boot.wim 2 --command="add peinstaller/winpe/2 /" 2>&1)" || error "The wimupdate command failed to add $SCRIPT_DIR/peinstaller to boot.wim\nErrors:\n$errors"
 
 if [ "$RPI_MODEL" == 5 ];then
   #no wor drivers available for pi5, so make a dummy file to allow boot
   echo "  - ARM64 drivers"
-  echo -n > "$PWD/critical"
-  errors="$(sudo wimupdate "$mntpnt"/bootpart/sources/boot.wim 2 --command="add critical /drivers/critical" 2>&1)" || error "The wimupdate command failed to add $PWD/critical to boot.wim\nErrors:\n$errors"
-  rm "$PWD/critical"
+  echo -n > "$SCRIPT_DIR/critical"
+  errors="$(sudo wimupdate "$mntpnt"/bootpart/sources/boot.wim 2 --command="add critical /drivers/critical" 2>&1)" || error "The wimupdate command failed to add $SCRIPT_DIR/critical to boot.wim\nErrors:\n$errors"
+  rm "$SCRIPT_DIR/critical"
 else
   echo "  - ARM64 drivers"
-  errors="$(sudo wimupdate "$mntpnt"/bootpart/sources/boot.wim 2 --command="add driverpackage /drivers" 2>&1)" || error "The wimupdate command failed to add $PWD/driverpackage to boot.wim\nErrors:\n$errors"
+  errors="$(sudo wimupdate "$mntpnt"/bootpart/sources/boot.wim 2 --command="add driverpackage /drivers" 2>&1)" || error "The wimupdate command failed to add $SCRIPT_DIR/driverpackage to boot.wim\nErrors:\n$errors"
 fi
 
 echo "  - UEFI firmware"
-sudo cp -r "$PWD/pi${RPI_MODEL}-uefipackage"/* "$mntpnt"/bootpart || error "Failed to copy $PWD/pi${RPI_MODEL}-uefipackage to $mntpnt/bootpart"
+sudo cp -r "$SCRIPT_DIR/pi${RPI_MODEL}-uefipackage"/* "$mntpnt"/bootpart || error "Failed to copy $SCRIPT_DIR/pi${RPI_MODEL}-uefipackage to $mntpnt/bootpart"
 
 if [ ! -z "$CONFIG_TXT" ];then
   status "Customizing config.txt according to the CONFIG_TXT variable"
@@ -1140,7 +1144,7 @@ if [ $RPI_MODEL == 3 ];then
   status "Applying GPT partition-table fix for the Pi3/Pi2"
   #According to @mariob, this patches the first sector of the disk to guide the bootloader into finding the fat32 partition
   #there's no other way of doing it on the pi 3 - hardware limitation
-  sudo dd if=$PWD/peinstaller/pi3/gptpatch.img of="$DEVICE" conv=fsync || error "The 'dd' command failed to flash $PWD/peinstaller/pi3/gptpatch.img to $DEVICE"
+  sudo dd if=$SCRIPT_DIR/peinstaller/pi3/gptpatch.img of="$DEVICE" conv=fsync || error "The 'dd' command failed to flash $SCRIPT_DIR/peinstaller/pi3/gptpatch.img to $DEVICE"
 fi
 
 status -n "Allowing pending writes to finish... "
